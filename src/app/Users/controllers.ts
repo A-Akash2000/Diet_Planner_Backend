@@ -8,7 +8,8 @@ import { FilterQuery } from "mongoose";
 import { sendEmail } from "../../utils/mailsevice";
 import logger from "../../utils/logger";
 import UserDetails from "./Models/userdetails";
-import Meal from "./Models/deitmeal";
+import Meal, { IMeal } from "./Models/deitmeal";
+import bmilogs, { IBMILog } from "./Models/bmilogs";
 
 export const addUser = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -366,7 +367,6 @@ const calculateBMI = (
   return { bmi: parseFloat(bmi.toFixed(2)), category };
 };
 
-// Create new user details
 export const createUserDetails = async (req: Request, res: Response) => {
   try {
     const {
@@ -404,6 +404,15 @@ export const createUserDetails = async (req: Request, res: Response) => {
 
     await newUserDetails.save();
 
+    // Log to BMILog
+    await bmilogs.create({
+      userId,
+      height,
+      weight,
+      bmi,
+      bmiCategory: category,
+    });
+
     return sendResponse(res, 201, {
       status: true,
       message: "User details created successfully",
@@ -417,6 +426,7 @@ export const createUserDetails = async (req: Request, res: Response) => {
     });
   }
 };
+
 
 // Get user details by userId
 export const getUserDetails = async (req: Request, res: Response) => {
@@ -491,6 +501,15 @@ export const updateUserDetails = async (req: Request, res: Response) => {
       });
     }
 
+    // Log to BMILog
+    await bmilogs.create({
+      userId,
+      height,
+      weight,
+      bmi,
+      bmiCategory: category,
+    });
+
     return sendResponse(res, 200, {
       status: true,
       message: "User details updated successfully",
@@ -504,6 +523,7 @@ export const updateUserDetails = async (req: Request, res: Response) => {
     });
   }
 };
+
 
 // Delete user details
 export const deleteUserDetails = async (req: Request, res: Response) => {
@@ -534,12 +554,6 @@ export const deleteUserDetails = async (req: Request, res: Response) => {
 export const createMeal = async (req: Request, res: Response) => {
   const { name, calories, type } = req.body;
 
-  if (!name || typeof name !== 'string') {
-    return sendResponse(res, 400, {
-      status: false,
-      message: 'Invalid or missing meal name',
-    });
-  }
 
   if (calories === undefined || typeof calories !== 'number' || calories < 0) {
     return sendResponse(res, 400, {
@@ -548,12 +562,6 @@ export const createMeal = async (req: Request, res: Response) => {
     });
   }
 
-  if (!type || typeof type !== 'string') {
-    return sendResponse(res, 400, {
-      status: false,
-      message: 'Invalid or missing meal type',
-    });
-  }
 
   try {
     const meal = await Meal.create(req.body);
@@ -566,24 +574,6 @@ export const createMeal = async (req: Request, res: Response) => {
     return sendResponse(res, 500, {
       status: false,
       message: 'Failed to create meal',
-      errors: [error.message],
-    });
-  }
-};
-
-
-export const getMeals = async (req: Request, res: Response) => {
-  try {
-    const meals = await Meal.find().sort({ createdAt: -1 });
-    return sendResponse(res, 200, {
-      status: true,
-      message: 'Meals fetched successfully',
-      data: meals,
-    });
-  } catch (error: any) {
-    return sendResponse(res, 500, {
-      status: false,
-      message: 'Failed to fetch meals',
       errors: [error.message],
     });
   }
@@ -606,12 +596,6 @@ export const updateMeal = async (req: Request, res: Response) => {
     });
   }
 
-  if (type && typeof type !== 'string') {
-    return sendResponse(res, 400, {
-      status: false,
-      message: 'Invalid meal type',
-    });
-  }
 
   try {
     const meal = await Meal.findByIdAndUpdate(req.params.id, req.body, { new: true });
@@ -631,6 +615,193 @@ export const updateMeal = async (req: Request, res: Response) => {
       status: false,
       message: 'Failed to update meal',
       errors: [error.message],
+    });
+  }
+};
+
+
+export const getUserBMILogs = async (
+  req: Request<
+    { userId: string },
+    {},
+    {},
+    {
+      page?: string;
+      limit?: string;
+      height?: string;
+      weight?: string;
+    }
+  >,
+  res: Response
+): Promise<void> => {
+  try {
+    const { userId } = req.params;
+    const page = parseInt(req.query.page || '1', 10);
+    const limit = parseInt(req.query.limit || '10', 10);
+
+    const query: any = { userId };
+
+    // Optional search filters
+    if (req.query.height) {
+      query.height = Number(req.query.height);
+    }
+
+    if (req.query.weight) {
+      query.weight = Number(req.query.weight);
+    }
+
+    const bmiLogs: IBMILog[] = await bmilogs
+      .find(query)
+      .sort({ recordedAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit);
+
+    const total = await bmilogs.countDocuments(query);
+
+    sendResponse(res, 200, {
+      status: true,
+      message: 'BMI logs fetched successfully',
+      data: bmiLogs,
+      total,
+    });
+  } catch (error: any) {
+    console.error('Error fetching BMI logs:', error);
+    sendResponse(res, 500, {
+      status: false,
+      message: 'Internal server error',
+      errors: [{ error: 'Internal server error' }],
+    });
+  }
+};
+
+export const getMeals = async (
+  req: Request<{}, {}, {}, {
+    page?: string;
+    limit?: string;
+    category?: string;
+    dietaryTag?: string;
+    name?: string;
+  }>,
+  res: Response
+): Promise<void> => {
+  try {
+    const page = parseInt(req.query.page || '1', 10);
+    const limit = parseInt(req.query.limit || '10', 10);
+    const skip = (page - 1) * limit;
+
+    const query: any = {};
+
+    // Optional filters
+    if (req.query.category) {
+      query.category = req.query.category;
+    }
+
+    if (req.query.dietaryTag) {
+      query.dietaryTags = { $in: [req.query.dietaryTag] };
+    }
+
+    if (req.query.name) {
+      query.name = { $regex: req.query.name, $options: 'i' }; // case-insensitive search
+    }
+
+    const meals: IMeal[] = await Meal.find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    const total = await Meal.countDocuments(query);
+
+    sendResponse(res, 200, {
+      status: true,
+      message: 'Meals fetched successfully',
+      data: meals,
+      total,
+    });
+  } catch (error: any) {
+    console.error('Error fetching meals:', error);
+    sendResponse(res, 500, {
+      status: false,
+      message: 'Internal server error',
+      errors: [{ error: error.message || 'Internal error' }],
+    });
+  }
+};
+
+export const generateDietPlan = async (
+  req: Request<{ userId: string }, {}, {}, { duration?: string }>,
+  res: Response
+) => {
+  try {
+    const { userId } = req.params;
+    const duration = req.query.duration || 'daily'; // daily or weekly
+
+    const user = await UserDetails.findById(userId);
+    if (!user) {
+      return sendResponse(res, 404, {
+        status: false,
+        message: 'User not found',
+      });
+    }
+
+    const bmiLog = await bmilogs.findOne({ userId }).sort({ recordedAt: -1 });
+    const bmi = bmiLog?.bmi;
+
+    // Example simple logic based on BMI
+    let calorieRange = '';
+    let meals: string[] = [];
+
+    if (!bmi) {
+      calorieRange = '1800–2200 kcal';
+      meals = ['Balanced diet with proteins, carbs, fiber'];
+    } else if (bmi < 18.5) {
+      calorieRange = '2500–3000 kcal';
+      meals = ['Peanut butter toast', 'Paneer rice bowl', 'Dry fruit milkshake', 'Banana smoothie'];
+    } else if (bmi < 24.9) {
+      calorieRange = '2000–2500 kcal';
+      meals = ['Oats with fruits', 'Grilled chicken salad', 'Dal roti', 'Yogurt with nuts'];
+    } else {
+      calorieRange = '1500–1800 kcal';
+      meals = ['Boiled egg whites', 'Vegetable soup', 'Grilled fish', 'Steamed veggies'];
+    }
+
+    // Generate plan
+    const generateMealPlan = (): any => ({
+      breakfast: meals[0] || 'Oats',
+      lunch: meals[1] || 'Salad',
+      snacks: meals[2] || 'Fruits',
+      dinner: meals[3] || 'Soup',
+    });
+
+    const today = new Date();
+    const days = duration === 'weekly' ? 7 : 1;
+
+    const dietPlan = Array.from({ length: days }).map((_, i) => {
+      const date = new Date(today);
+      date.setDate(today.getDate() + i);
+
+      return {
+        date: date.toISOString().split('T')[0],
+        meals: generateMealPlan(),
+      };
+    });
+
+    return sendResponse(res, 200, {
+      status: true,
+      message: `${duration} diet plan generated`,
+      data: {
+        userId,
+        bmi,
+        calorieRange,
+        duration,
+        dietPlan,
+      },
+    });
+  } catch (error: any) {
+    console.error('generateDietPlan error:', error);
+    return sendResponse(res, 500, {
+      status: false,
+      message: 'Internal Server Error',
+      errors: [{ error: error.message }],
     });
   }
 };
