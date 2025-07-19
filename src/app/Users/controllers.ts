@@ -532,6 +532,29 @@ export const deleteUserDetails = async (req: Request, res: Response) => {
 
 
 export const createMeal = async (req: Request, res: Response) => {
+  const { name, calories, type } = req.body;
+
+  if (!name || typeof name !== 'string') {
+    return sendResponse(res, 400, {
+      status: false,
+      message: 'Invalid or missing meal name',
+    });
+  }
+
+  if (calories === undefined || typeof calories !== 'number' || calories < 0) {
+    return sendResponse(res, 400, {
+      status: false,
+      message: 'Calories must be a non-negative number',
+    });
+  }
+
+  if (!type || typeof type !== 'string') {
+    return sendResponse(res, 400, {
+      status: false,
+      message: 'Invalid or missing meal type',
+    });
+  }
+
   try {
     const meal = await Meal.create(req.body);
     return sendResponse(res, 201, {
@@ -547,6 +570,7 @@ export const createMeal = async (req: Request, res: Response) => {
     });
   }
 };
+
 
 export const getMeals = async (req: Request, res: Response) => {
   try {
@@ -565,30 +589,30 @@ export const getMeals = async (req: Request, res: Response) => {
   }
 };
 
-export const getMealById = async (req: Request, res: Response) => {
-  try {
-    const meal = await Meal.findById(req.params.id);
-    if (!meal) {
-      return sendResponse(res, 404, {
-        status: false,
-        message: 'Meal not found',
-      });
-    }
-    return sendResponse(res, 200, {
-      status: true,
-      message: 'Meal fetched successfully',
-      data: meal,
-    });
-  } catch (error: any) {
-    return sendResponse(res, 500, {
+export const updateMeal = async (req: Request, res: Response) => {
+  const { name, calories, type } = req.body;
+
+  if (name && typeof name !== 'string') {
+    return sendResponse(res, 400, {
       status: false,
-      message: 'Failed to fetch meal',
-      errors: [error.message],
+      message: 'Invalid meal name',
     });
   }
-};
 
-export const updateMeal = async (req: Request, res: Response) => {
+  if (calories !== undefined && (typeof calories !== 'number' || calories < 0)) {
+    return sendResponse(res, 400, {
+      status: false,
+      message: 'Calories must be a non-negative number',
+    });
+  }
+
+  if (type && typeof type !== 'string') {
+    return sendResponse(res, 400, {
+      status: false,
+      message: 'Invalid meal type',
+    });
+  }
+
   try {
     const meal = await Meal.findByIdAndUpdate(req.params.id, req.body, { new: true });
     if (!meal) {
@@ -606,28 +630,6 @@ export const updateMeal = async (req: Request, res: Response) => {
     return sendResponse(res, 500, {
       status: false,
       message: 'Failed to update meal',
-      errors: [error.message],
-    });
-  }
-};
-
-export const deleteMeal = async (req: Request, res: Response) => {
-  try {
-    const meal = await Meal.findByIdAndDelete(req.params.id);
-    if (!meal) {
-      return sendResponse(res, 404, {
-        status: false,
-        message: 'Meal not found',
-      });
-    }
-    return sendResponse(res, 200, {
-      status: true,
-      message: 'Meal deleted successfully',
-    });
-  } catch (error: any) {
-    return sendResponse(res, 500, {
-      status: false,
-      message: 'Failed to delete meal',
       errors: [error.message],
     });
   }
