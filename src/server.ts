@@ -72,3 +72,5 @@ connectToDatabase().then(() => {
     logger.info(`Server running on http://localhost:${config.PORT}`);
   });
 });
+
+export default app;

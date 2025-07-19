@@ -19,7 +19,7 @@ interface Config {
 const config = Object.freeze({
   PORT: process.env.PORT || 5555,
   NODE_ENV: process.env.MODE_ENV || "local",
-  DATABASE_URL: process.env.DATABASE_URL || "mongodb://localhost:27017/hospitalManagement",
+  DATABASE_URL: process.env.DATABASE_URL || "mongodb://localhost:27017/clinicaltrial",
   JWTKEY: process.env.JWTKEY || "",
   ENCRYPTION_KEY: process.env.ENCRYPTION_KEY || "",
   HOSTMAIL: process.env.HOSTMAIL || "",

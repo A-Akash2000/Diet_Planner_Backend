@@ -4,17 +4,17 @@ import { UploadedFile } from 'express-fileupload';
 import { Request, Response, NextFunction } from 'express';
 import config from '../config/config'
 import { sendResponse } from "./response"
-
+ 
 const ensureUploadDir = (dirPath: string): void => {
   if (!fs.existsSync(dirPath)) {
     fs.mkdirSync(dirPath, { recursive: true });
   }
 };
-
-
+ 
+ 
 const allowedExtensions = ['.png', '.jpeg', '.jpg', '.webp'];
-
-
+ 
+ 
 // export const uploadProfilePicture = async (
 //   req: Request,
 //   res: Response,
@@ -23,66 +23,66 @@ const allowedExtensions = ['.png', '.jpeg', '.jpg', '.webp'];
 //   try {
 //     console.log("req.files",req.files)
 //     const profilePicture = req.files?.profilePicture;
-
+ 
 //     if (typeof profilePicture === 'string') {
 //       req.body.profilePicture = profilePicture;
 //       next();
 //       return;
 //     }
-
+ 
 //     if (profilePicture && typeof profilePicture === 'object') {
 //       const file = profilePicture as UploadedFile;
 //       const extension = path.extname(file.name).toLowerCase();
-
+ 
 //       if (!allowedExtensions.includes(extension)) {
 //         res.status(400).json({
 //           error: `Invalid file type. Allowed types: ${allowedExtensions.join(', ')}`,
 //         });
 //         return;
 //       }
-
+ 
 //       const folder = 'uploads/profile-pictures';
 //       const uploadDir = path.join(__dirname, '..', folder);
 //       ensureUploadDir(uploadDir);
-
+ 
 //       const timestamp = Date.now();
 //       const newFileName = `${timestamp}${extension}`;
 //       const filePath = path.join(uploadDir, newFileName);
-
+ 
 //       await file.mv(filePath);
-
+ 
 //       const relativePath = path.join(folder, newFileName).replace(/\\/g, '/');
 //       req.body.profilePicture = config.API_URL + "profile-pictures/" + newFileName;
-
+ 
 //       next();
 //       return;
 //     }
-
+ 
 //     res.status(400).json({ error: 'Invalid profilePicture input' });
 //   } catch (err) {
 //     console.error('Upload error:', err);
 //     res.status(500).json({ error: 'File upload failed' });
 //   }
 // };
-
-
-export const uploadProfilePicture = async (
+ 
+ 
+export const uploadProfilePictureUser = async (
   req: Request,
   res: Response,
   next: NextFunction
 ): Promise<void> => {
   try {
     const profilePicture = req.files?.profilePicture;
-
+ 
     // if (typeof profilePicture === 'string') {
     //   req.body.profilePicture = profilePicture;
     //   return next();
     // }
-
+ 
     if (profilePicture && typeof profilePicture === 'object') {
       const file = profilePicture as UploadedFile;
       const extension = path.extname(file.name).toLowerCase();
-
+ 
       if (!allowedExtensions.includes(extension)) {
         return sendResponse(res, 400, {
           status: false,
@@ -90,24 +90,24 @@ export const uploadProfilePicture = async (
           errors: [{ profilePicture: `Allowed types: ${allowedExtensions.join(', ')}` }],
         });
       }
-
+ 
       const folder = 'uploads/profile-pictures';
       const uploadDir = path.join(__dirname, '..', folder);
       ensureUploadDir(uploadDir);
-
+ 
       const timestamp = Date.now();
       const newFileName = `${timestamp}${extension}`;
       const filePath = path.join(uploadDir, newFileName);
-
+ 
       await file.mv(filePath);
-
+ 
       const imageUrl = `${config.API_URL}images/profile-pictures/${newFileName}`;
       req.body.profilePicture = imageUrl;
-
+ 
       next()
       return
     }
-
+ 
     // return sendResponse(res, 400, {
     //   status: false,
     //   message: 'Invalid profilePicture input',
@@ -124,3 +124,62 @@ export const uploadProfilePicture = async (
     });
   }
 };
+ 
+export const uploadProfilePicture = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    let profilePictures = req.files?.testResults;
+ 
+    if (!profilePictures) {
+      req.body.profilePicture = [];
+      return next(); // No file uploaded
+    }
+ 
+    // Normalize to array
+    const files = Array.isArray(profilePictures) ? profilePictures : [profilePictures];
+    const uploadedUrls: string[] = [];
+ 
+    const folder = 'uploads/profile-pictures';
+    const uploadDir = path.join(__dirname, '..', folder);
+    ensureUploadDir(uploadDir);
+ 
+    for (const file of files) {
+      const extension = path.extname(file.name).toLowerCase();
+ 
+      if (!allowedExtensions.includes(extension)) {
+        return sendResponse(res, 400, {
+          status: false,
+          message: 'Invalid file type',
+          errors: [
+            {
+              profilePicture: `File "${file.name}" has invalid type. Allowed: ${allowedExtensions.join(', ')}`
+            }
+          ],
+        });
+      }
+ 
+      const timestamp = Date.now() + '-' + Math.round(Math.random() * 1e5);
+      const newFileName = `${timestamp}${extension}`;
+      const filePath = path.join(uploadDir, newFileName);
+ 
+      await file.mv(filePath);
+ 
+      const imageUrl = `${config.API_URL}images/profile-pictures/${newFileName}`;
+      uploadedUrls.push(imageUrl);
+    }
+ 
+    req.body.testResults = uploadedUrls;
+    return next();
+  } catch (err) {
+    console.error('Upload error:', err);
+    return sendResponse(res, 500, {
+      status: false,
+      message: 'Internal server error',
+      errors: [{ error: 'File upload failed' }],
+    });
+  }
+};
+ 

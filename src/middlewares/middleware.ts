@@ -8,11 +8,17 @@ const JWT_SECRET = process.env.JWT_SECRET || 'default_secret';
 interface AuthenticatedUser {
   _id?:string;
   id:string;
-  name?: string;
+  username?: string;
   email?: string;
+  contactNumber?: string;
   password?: string;
   role?: string;
+  shiftStart?: string;
+  shiftEnd?: string;
+  address?: string;
   gender?: string;
+  isAvailable?: boolean;
+  lastUpdated?: Date;
   createdAt?: Date;
   updatedAt?: Date;
   deleted?: boolean;
@@ -206,3 +212,13 @@ export const decryptRequest = (req: Request, res: Response, next: NextFunction):
 };
 
 
+export const  decrypttest = (data : any): any => {
+  try {
+    // console.log("sdfadsadasdsadsa",data)
+      const decrypted = decrypt(data);
+        data = JSON.parse(decrypted);
+    return data
+  } catch (err) {
+    console.error('Error in decrypting request:', err);
+  }
+};
