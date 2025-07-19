@@ -12,7 +12,8 @@ router.post('/login',decryptRequest, UserCtrl.loginUser);
 router.get('/getallusers', jwtMiddleware, UserCtrl.getAllUsers);
 router.get('/getcurrentuser/:id', jwtMiddleware, UserCtrl.getCurrentUserById);
 router.post('/delete-user/:id/:deleted',jwtMiddleware, UserCtrl.deleteUser);
-// router.post('/upload', UserCtrl.uploadFile);
-
+router.post('/create-UserDetails',jwtMiddleware,decryptRequest, UserCtrl.createUserDetails);
+router.post('/update-UserDetails/:userId',jwtMiddleware,decryptRequest, UserCtrl.updateUserDetails);
+router.get('/get-userdetails/:userId', jwtMiddleware, UserCtrl.getUserDetails);
 
 export default router;

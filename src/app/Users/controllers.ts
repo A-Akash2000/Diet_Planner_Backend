@@ -7,7 +7,7 @@ import { sendResponse } from "../../utils/response";
 import { FilterQuery } from "mongoose";
 import { sendEmail } from "../../utils/mailsevice";
 import logger from "../../utils/logger";
-
+import UserDetails from "./Models/userdetails";
 export const addUser = async (req: Request, res: Response): Promise<void> => {
   try {
     const {
@@ -344,6 +344,186 @@ export const getCurrentUserById = async (
       status: false,
       message: "Internal server error",
       errors: [{ error: "Internal server error" }],
+    });
+  }
+};
+
+
+
+const calculateBMI = (
+  weight: number,
+  height: number
+): { bmi: number; category: string } => {
+  if (!height || height <= 0) throw new Error("Height must be greater than 0");
+  const bmi = weight / ((height / 100) ** 2);
+  let category = "Normal";
+  if (bmi < 18.5) category = "Underweight";
+  else if (bmi >= 18.5 && bmi < 24.9) category = "Normal";
+  else if (bmi >= 25 && bmi < 29.9) category = "Overweight";
+  else category = "Obese";
+  return { bmi: parseFloat(bmi.toFixed(2)), category };
+};
+
+// Create new user details
+export const createUserDetails = async (req: Request, res: Response) => {
+  try {
+    const {
+      userId,
+      age,
+      gender,
+      height,
+      weight,
+      activityLevel,
+      dietaryPreferences,
+      healthGoals,
+    } = req.body;
+
+    if (!userId || !height || !weight) {
+      return sendResponse(res, 400, {
+        status: false,
+        message: "userId, height and weight are required",
+      });
+    }
+
+    const { bmi, category } = calculateBMI(weight, height);
+
+    const newUserDetails = new UserDetails({
+      userId,
+      age,
+      gender,
+      height,
+      weight,
+      activityLevel,
+      dietaryPreferences,
+      healthGoals,
+      bmi,
+      bmiCategory: category,
+    });
+
+    await newUserDetails.save();
+
+    return sendResponse(res, 201, {
+      status: true,
+      message: "User details created successfully",
+      data: newUserDetails,
+    });
+  } catch (err) {
+    console.error("Create Error:", err);
+    return sendResponse(res, 500, {
+      status: false,
+      message: "Failed to create user details",
+    });
+  }
+};
+
+// Get user details by userId
+export const getUserDetails = async (req: Request, res: Response) => {
+  try {
+    console.log("req.params.userId",req.params.userId)
+    const userDetails = await UserDetails.findOne({ userId: req.params.userId });
+    console.log("userDetails",userDetails)
+    if (!userDetails) {
+      return sendResponse(res, 404, {
+        status: false,
+        message: "User details not found",
+      });
+    }
+console.log("userDetails",userDetails)
+    return sendResponse(res, 200, {
+      status: true,
+      message: "User details fetched successfully",
+      data: userDetails,
+    });
+  } catch (err) {
+    console.error("Get Error:", err);
+    return sendResponse(res, 500, {
+      status: false,
+      message: "Failed to get user details",
+    });
+  }
+};
+
+// Update user details
+export const updateUserDetails = async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.params;
+    const {
+      age,
+      gender,
+      height,
+      weight,
+      activityLevel,
+      dietaryPreferences,
+      healthGoals,
+    } = req.body;
+
+    if (!height || !weight) {
+      return sendResponse(res, 400, {
+        status: false,
+        message: "Height and weight are required for BMI calculation",
+      });
+    }
+
+    const { bmi, category } = calculateBMI(weight, height);
+
+    const updatedUserDetails = await UserDetails.findOneAndUpdate(
+      { userId },
+      {
+        age,
+        gender,
+        height,
+        weight,
+        activityLevel,
+        dietaryPreferences,
+        healthGoals,
+        bmi,
+        bmiCategory: category,
+      },
+      { new: true }
+    );
+
+    if (!updatedUserDetails) {
+      return sendResponse(res, 404, {
+        status: false,
+        message: "User details not found",
+      });
+    }
+
+    return sendResponse(res, 200, {
+      status: true,
+      message: "User details updated successfully",
+      data: updatedUserDetails,
+    });
+  } catch (err) {
+    console.error("Update Error:", err);
+    return sendResponse(res, 500, {
+      status: false,
+      message: "Failed to update user details",
+    });
+  }
+};
+
+// Delete user details
+export const deleteUserDetails = async (req: Request, res: Response) => {
+  try {
+    const deleted = await UserDetails.findOneAndDelete({ userId: req.params.userId });
+
+    if (!deleted) {
+      return sendResponse(res, 404, {
+        status: false,
+        message: "User details not found",
+      });
+    }
+
+    return sendResponse(res, 200, {
+      status: true,
+      message: "User details deleted successfully",
+    });
+  } catch (err) {
+    console.error("Delete Error:", err);
+    return sendResponse(res, 500, {
+      status: false,
+      message: "Failed to delete user details",
     });
   }
 };
