@@ -259,7 +259,6 @@ export const getAllUsers = async (
     const users = await User.find(query)
       .skip((page - 1) * limit)
       .limit(limit)
-      .populate('departmentId','name _id');
 
     const total = await User.countDocuments(query);
 
