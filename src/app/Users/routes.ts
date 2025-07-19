@@ -15,5 +15,8 @@ router.post('/delete-user/:id/:deleted',jwtMiddleware, UserCtrl.deleteUser);
 router.post('/create-UserDetails',jwtMiddleware,decryptRequest, UserCtrl.createUserDetails);
 router.post('/update-UserDetails/:userId',jwtMiddleware,decryptRequest, UserCtrl.updateUserDetails);
 router.get('/get-userdetails/:userId', jwtMiddleware, UserCtrl.getUserDetails);
+router.post('/add-meals',jwtMiddleware,decryptRequest, UserCtrl.createMeal);
+router.post('/update-means/:userId',jwtMiddleware,decryptRequest, UserCtrl.updateMeal);
+router.get('/get-meals/:userId', jwtMiddleware, UserCtrl.getMeals);
 
 export default router;

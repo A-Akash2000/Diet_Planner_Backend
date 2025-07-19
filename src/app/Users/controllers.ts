@@ -8,6 +8,8 @@ import { FilterQuery } from "mongoose";
 import { sendEmail } from "../../utils/mailsevice";
 import logger from "../../utils/logger";
 import UserDetails from "./Models/userdetails";
+import Meal from "./Models/deitmeal";
+
 export const addUser = async (req: Request, res: Response): Promise<void> => {
   try {
     const {
@@ -524,6 +526,109 @@ export const deleteUserDetails = async (req: Request, res: Response) => {
     return sendResponse(res, 500, {
       status: false,
       message: "Failed to delete user details",
+    });
+  }
+};
+
+
+export const createMeal = async (req: Request, res: Response) => {
+  try {
+    const meal = await Meal.create(req.body);
+    return sendResponse(res, 201, {
+      status: true,
+      message: 'Meal created successfully',
+      data: meal,
+    });
+  } catch (error: any) {
+    return sendResponse(res, 500, {
+      status: false,
+      message: 'Failed to create meal',
+      errors: [error.message],
+    });
+  }
+};
+
+export const getMeals = async (req: Request, res: Response) => {
+  try {
+    const meals = await Meal.find().sort({ createdAt: -1 });
+    return sendResponse(res, 200, {
+      status: true,
+      message: 'Meals fetched successfully',
+      data: meals,
+    });
+  } catch (error: any) {
+    return sendResponse(res, 500, {
+      status: false,
+      message: 'Failed to fetch meals',
+      errors: [error.message],
+    });
+  }
+};
+
+export const getMealById = async (req: Request, res: Response) => {
+  try {
+    const meal = await Meal.findById(req.params.id);
+    if (!meal) {
+      return sendResponse(res, 404, {
+        status: false,
+        message: 'Meal not found',
+      });
+    }
+    return sendResponse(res, 200, {
+      status: true,
+      message: 'Meal fetched successfully',
+      data: meal,
+    });
+  } catch (error: any) {
+    return sendResponse(res, 500, {
+      status: false,
+      message: 'Failed to fetch meal',
+      errors: [error.message],
+    });
+  }
+};
+
+export const updateMeal = async (req: Request, res: Response) => {
+  try {
+    const meal = await Meal.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!meal) {
+      return sendResponse(res, 404, {
+        status: false,
+        message: 'Meal not found',
+      });
+    }
+    return sendResponse(res, 200, {
+      status: true,
+      message: 'Meal updated successfully',
+      data: meal,
+    });
+  } catch (error: any) {
+    return sendResponse(res, 500, {
+      status: false,
+      message: 'Failed to update meal',
+      errors: [error.message],
+    });
+  }
+};
+
+export const deleteMeal = async (req: Request, res: Response) => {
+  try {
+    const meal = await Meal.findByIdAndDelete(req.params.id);
+    if (!meal) {
+      return sendResponse(res, 404, {
+        status: false,
+        message: 'Meal not found',
+      });
+    }
+    return sendResponse(res, 200, {
+      status: true,
+      message: 'Meal deleted successfully',
+    });
+  } catch (error: any) {
+    return sendResponse(res, 500, {
+      status: false,
+      message: 'Failed to delete meal',
+      errors: [error.message],
     });
   }
 };
